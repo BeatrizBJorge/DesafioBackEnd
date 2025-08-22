@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using DesafioBackEnd.Data;
 using DesafioBackEnd.Models;
 using DesafioBackEnd.DTOs; 
+using DesafioBackEnd.Services;
 
 namespace DesafioBackEnd.Controllers
 {
@@ -10,107 +11,60 @@ namespace DesafioBackEnd.Controllers
     [Route("api/[controller]")]
     public class EntregadoresController : ControllerBase
     {
-        private readonly AppDbContext _context;
-        private readonly IWebHostEnvironment _env;
+        private readonly EntregadorService _service;
 
-        public EntregadoresController(AppDbContext context, IWebHostEnvironment env)
+        public EntregadoresController(EntregadorService service)
         {
-            _context = context;
-            _env = env;
+            _service = service;
         }
 
-        // POST: api/entregadores
-        [HttpPost]
-        public async Task<ActionResult<Entregador>> CreateEntregador(Entregador entregador)
-        {
-            // Verificação de CNPJ único
-            if (await _context.Entregadores.AnyAsync(e => e.Cnpj == entregador.Cnpj))
-                return BadRequest("CNPJ já cadastrado.");
-
-            // Verificação de CNH única
-            if (await _context.Entregadores.AnyAsync(e => e.NumeroCnh == entregador.NumeroCnh))
-                return BadRequest("Número da CNH já cadastrado.");
-
-            // Validação do Tipo CNH
-            var tiposValidos = new[] { "A", "B", "A+B" };
-            if (!tiposValidos.Contains(entregador.TipoCnh))
-                return BadRequest("Tipo de CNH inválido. Deve ser A, B ou A+B.");
-
-            _context.Entregadores.Add(entregador);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetEntregadorById), new { id = entregador.Id }, entregador);
-        }
-
-        // GET: api/entregadores
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Entregador>>> GetEntregadores([FromQuery] string? nome)
-        {
-            var query = _context.Entregadores.AsQueryable();
+        public async Task<ActionResult<List<Entregador>>> Get() =>
+            await _service.ListarEntregadoresAsync();
 
-            if (!string.IsNullOrEmpty(nome))
-                query = query.Where(e => e.Nome.Contains(nome));
-
-            return await query.ToListAsync();
-        }
-
-        // GET: api/entregadores/{id}
+        
         [HttpGet("{id}")]
-        public async Task<ActionResult<Entregador>> GetEntregadorById(int id)
+        public async Task<ActionResult<Entregador>> GetById(int id)
         {
-            var entregador = await _context.Entregadores.FindAsync(id);
-            if (entregador == null)
-                return NotFound();
-
-            return entregador;
+            var entregador = await _service.BuscarPorIdAsync(id);
+            return entregador == null ? NotFound() : Ok(entregador);
         }
 
-        // PUT: api/entregadores/{id}/cnh
+        [HttpPost]
+        public async Task<ActionResult<Entregador>> Post(Entregador entregador)
+        {
+            var novo = await _service.CriarEntregadorAsync(entregador);
+            return CreatedAtAction(nameof(GetById), new { id = novo.Id }, novo);
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Put(int id, Entregador entregador)
+        {
+            var atualizado = await _service.AtualizarEntregadorAsync(id, entregador);
+            return atualizado ? NoContent() : NotFound();
+        }
+
+        // Upload da CNH
         [HttpPut("{id}/cnh")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> UploadCnh(int id, [FromForm] UploadCnhDto dto)
+        public async Task<IActionResult> UploadCnh(int id, [FromForm] IFormFile file)
         {
-            var entregador = await _context.Entregadores.FindAsync(id);
-            if (entregador == null)
-                return NotFound();
-
-            var file = dto.File;
-            if (file == null || file.Length == 0)
-                return BadRequest("Arquivo inválido.");
-
-            var ext = Path.GetExtension(file.FileName).ToLower();
-            if (ext != ".png" && ext != ".bmp")
-                return BadRequest("Somente arquivos PNG ou BMP são permitidos.");
-
-            // Salva arquivo no disco e na pasta uploads
-            var uploadsDir = Path.Combine(_env.ContentRootPath, "uploads");
-            if (!Directory.Exists(uploadsDir))
-                Directory.CreateDirectory(uploadsDir);
-
-            var filePath = Path.Combine(uploadsDir, $"{Guid.NewGuid()}{ext}");
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            try
             {
-                await file.CopyToAsync(stream);
+                var ok = await _service.UploadCnhAsync(id, file);
+                return ok ? NoContent() : NotFound();
             }
-
-            entregador.ImagemCnhPath = filePath;
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
-        // DELETE: api/entregadores/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteEntregador(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var entregador = await _context.Entregadores.FindAsync(id);
-            if (entregador == null)
-                return NotFound();
-
-            _context.Entregadores.Remove(entregador);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            var removido = await _service.RemoverEntregadorAsync(id);
+            return removido ? NoContent() : NotFound();
         }
     }
 }

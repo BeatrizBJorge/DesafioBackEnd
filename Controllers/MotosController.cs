@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DesafioBackEnd.Data;
 using DesafioBackEnd.Models;
+using DesafioBackEnd.Services;
 
 namespace DesafioBackEnd.Controllers
 {
@@ -15,96 +16,44 @@ namespace DesafioBackEnd.Controllers
     [Route("api/[controller]")]
     public class MotosController : Controller
     {
-        private readonly AppDbContext _context;
+        private readonly MotoService _service;
 
-        public MotosController(AppDbContext context)
+        public MotosController(MotoService service)
         {
-            _context = context;
+            _service = service;
         }
 
-        // POST: api/motos
-        [HttpPost]
-        public async Task<ActionResult<Moto>> CreateMoto(Moto moto)
-        {
-            // Verificação da placa
-            var exists = await _context.Motos.AnyAsync(m => m.Placa == moto.Placa);
-            if (exists)
-            {
-                return BadRequest("Placa já cadastrada.");
-            }
-            _context.Motos.Add(moto);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction(nameof(GetMotoById), new { id = moto.Id }, moto);
-        }
-
-        // GET: api/motos
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Moto>>> GetMotos([FromQuery] string? placa)
-        {
-            var query = _context.Motos.AsQueryable();
+        public async Task<ActionResult<List<Moto>>> Get() =>
+            await _service.ListarMotosAsync();
 
-            if (!string.IsNullOrEmpty(placa))
-            {
-                query = query.Where(m => m.Placa.Contains(placa));
-            }
 
-            return await query.ToListAsync();
-        }
-
-        // GET: api/motos/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<Moto>> GetMotoById(int id)
+        public async Task<ActionResult<Moto>> GetById(int id)
         {
-            var moto = await _context.Motos.FindAsync(id);
-
-            if (moto == null)
-            {
-                return NotFound();
-            }
-
-            return moto;
+            var moto = await _service.BuscarPorIdAsync(id);
+            return moto == null ? NotFound() : Ok(moto);
         }
 
-        // PUT: api/motos/{id}
+        [HttpPost]
+        public async Task<ActionResult<Moto>> Post(Moto moto)
+        {
+            var nova = await _service.CriarMotoAsync(moto);
+            return CreatedAtAction(nameof(GetById), new { id = nova.Id }, nova);
+        }
+
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdatePlaca(int id, [FromBody] string novaPlaca)
+        public async Task<IActionResult> Put(int id, Moto moto)
         {
-            var moto = await _context.Motos.FindAsync(id);
-
-            if (moto == null)
-            {
-                return NotFound();
-            }
-
-            // Verificação de nova placa
-            var exists = await _context.Motos.AnyAsync(m => m.Placa == novaPlaca && m.Id != id);
-            if (exists)
-            {
-                return BadRequest("Placa já cadastrada.");
-            }
-
-            moto.Placa = novaPlaca;
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            var atualizado = await _service.AtualizarMotoAsync(id, moto);
+            return atualizado ? NoContent() : NotFound();
         }
 
-        // DELETE: api/motos/{id}
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteMoto(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var moto = await _context.Motos.FindAsync(id);
-
-            if (moto == null)
-            {
-                return NotFound();
-            }
-
-            _context.Motos.Remove(moto);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            var removido = await _service.RemoverMotoAsync(id);
+            return removido ? NoContent() : NotFound();
         }
     }
 }
