@@ -45,3 +45,4 @@ D:\Pasta\DesafioBackEnd\obj\Debug\net8.0\refint\DesafioBackEnd.dll
 D:\Pasta\DesafioBackEnd\obj\Debug\net8.0\DesafioBackEnd.pdb
 D:\Pasta\DesafioBackEnd\obj\Debug\net8.0\DesafioBackEnd.genruntimeconfig.cache
 D:\Pasta\DesafioBackEnd\obj\Debug\net8.0\ref\DesafioBackEnd.dll
+D:\Pasta\DesafioBackEnd\obj\Debug\net8.0\DesafioBackEnd.sourcelink.json

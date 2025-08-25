@@ -24,36 +24,40 @@ namespace DesafioBackEnd.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<Moto>>> Get() =>
-            await _service.ListarMotosAsync();
-
+        public async Task<ActionResult<IEnumerable<Moto>>> GetAll()
+        {
+            return Ok(await _service.GetAllAsync());
+        }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Moto>> GetById(int id)
         {
-            var moto = await _service.BuscarPorIdAsync(id);
-            return moto == null ? NotFound() : Ok(moto);
+            var moto = await _service.GetByIdAsync(id);
+            if (moto == null) return NotFound();
+            return Ok(moto);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Moto>> Post(Moto moto)
+        public async Task<ActionResult<Moto>> Create(Moto moto)
         {
-            var nova = await _service.CriarMotoAsync(moto);
+            var nova = await _service.CreateAsync(moto);
             return CreatedAtAction(nameof(GetById), new { id = nova.Id }, nova);
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Put(int id, Moto moto)
+        public async Task<IActionResult> Update(int id, Moto moto)
         {
-            var atualizado = await _service.AtualizarMotoAsync(id, moto);
-            return atualizado ? NoContent() : NotFound();
+            var ok = await _service.UpdateAsync(id, moto);
+            if (!ok) return NotFound();
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var removido = await _service.RemoverMotoAsync(id);
-            return removido ? NoContent() : NotFound();
+            var ok = await _service.DeleteAsync(id);
+            if (!ok) return NotFound();
+            return NoContent();
         }
     }
 }

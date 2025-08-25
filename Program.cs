@@ -1,4 +1,5 @@
 using DesafioBackEnd.Data;
+using DesafioBackEnd.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,7 +26,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-//app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 app.Run();

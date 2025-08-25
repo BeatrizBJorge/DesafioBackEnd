@@ -22,42 +22,40 @@ namespace DesafioBackEnd.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<Locacao>>> Get() =>
-            await _service.ListarLocacoesAsync();
+        public async Task<ActionResult<IEnumerable<Locacao>>> GetAll()
+        {
+            return Ok(await _service.GetAllAsync());
+        }
 
         [HttpGet("{id}")]
         public async Task<ActionResult<Locacao>> GetById(int id)
         {
-            var locacao = await _service.BuscarPorIdAsync(id);
-            return locacao == null ? NotFound() : Ok(locacao);
+            var locacao = await _service.GetByIdAsync(id);
+            if (locacao == null) return NotFound();
+            return Ok(locacao);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Locacao>> Post(Locacao locacao)
+        public async Task<ActionResult<Locacao>> Create(Locacao locacao)
         {
-            try
-            {
-                var nova = await _service.CriarLocacaoAsync(locacao);
-                return CreatedAtAction(nameof(GetById), new { id = nova.Id }, nova);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            var nova = await _service.CreateAsync(locacao);
+            return CreatedAtAction(nameof(GetById), new { id = nova.Id }, nova);
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Put(int id, Locacao locacao)
+        [HttpPut("{id}/finalizar")]
+        public async Task<IActionResult> Finalizar(int id, [FromBody] DateTime dataFim)
         {
-            var atualizada = await _service.AtualizarLocacaoAsync(id, locacao);
-            return atualizada ? NoContent() : NotFound();
+            var ok = await _service.FinalizarLocacaoAsync(id, dataFim);
+            if (!ok) return NotFound();
+            return NoContent();
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var removida = await _service.RemoverLocacaoAsync(id);
-            return removida ? NoContent() : NotFound();
+            var ok = await _service.DeleteAsync(id);
+            if (!ok) return NotFound();
+            return NoContent();
         }
     }
 }

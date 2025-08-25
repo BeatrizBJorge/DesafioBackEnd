@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using DesafioBackEnd.Data;
 using DesafioBackEnd.Models;
+using DesafioBackEnd.Controllers;
 using Microsoft.EntityFrameworkCore;
 
 namespace DesafioBackEnd.Services
@@ -17,7 +18,7 @@ namespace DesafioBackEnd.Services
             _context = context;
         }
 
-        public async Task<List<Locacao>> ListarLocacoesAsync()
+        public async Task<List<Locacao>> GetAllAsync()
         {
             return await _context.Locacoes
                 .Include(l => l.Moto)
@@ -25,7 +26,7 @@ namespace DesafioBackEnd.Services
                 .ToListAsync();
         }
 
-        public async Task<Locacao?> BuscarPorIdAsync(int id)
+        public async Task<Locacao?> GetByIdAsync(int id)
         {
             return await _context.Locacoes
                 .Include(l => l.Moto)
@@ -33,51 +34,47 @@ namespace DesafioBackEnd.Services
                 .FirstOrDefaultAsync(l => l.Id == id);
         }
 
-        public async Task<Locacao> CriarLocacaoAsync(Locacao locacao)
+        public async Task<Locacao> CreateAsync(Locacao locacao)
         {
-            
-            var moto = await _context.Motos.FindAsync(locacao.MotoId);
-            if (moto == null)
-                throw new InvalidOperationException("Moto não encontrada.");
-
-            
-            bool motoAlugada = await _context.Locacoes.AnyAsync(l => l.MotoId == locacao.MotoId);
-            if (motoAlugada)
-                throw new InvalidOperationException("Moto já está alugada.");
-
-            
-            var entregador = await _context.Entregadores.FindAsync(locacao.EntregadorId);
-            if (entregador == null)
-                throw new InvalidOperationException("Entregador não encontrado.");
-
             _context.Locacoes.Add(locacao);
-            await _context.SaveChangesAsync();
 
+            var moto = await _context.Motos.FindAsync(locacao.MotoId);
+            if (moto != null)
+            {
+                moto.Disponivel = false;
+            }
+
+            await _context.SaveChangesAsync();
             return locacao;
         }
 
-        public async Task<bool> AtualizarLocacaoAsync(int id, Locacao locacao)
+        public async Task<bool> FinalizarLocacaoAsync(int id, DateTime dataFim)
         {
-            var existente = await _context.Locacoes.FindAsync(id);
-            if (existente == null)
+            var locacao = await _context.Locacoes
+                .Include(l => l.Moto)
+                .FirstOrDefaultAsync(l => l.Id == id);
+
+            if (locacao == null)
                 return false;
 
-            existente.DataInicio = locacao.DataInicio;
-            existente.DataFim = locacao.DataFim;
-            existente.MotoId = locacao.MotoId;
-            existente.EntregadorId = locacao.EntregadorId;
+            locacao.DataFim = dataFim;
+
+            if (locacao.Moto != null)
+            {
+                locacao.Moto.Disponivel = true;
+            }
 
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> RemoverLocacaoAsync(int id)
+        public async Task<bool> DeleteAsync(int id)
         {
-            var existente = await _context.Locacoes.FindAsync(id);
-            if (existente == null)
+            var locacao = await _context.Locacoes.FindAsync(id);
+            if (locacao == null)
                 return false;
 
-            _context.Locacoes.Remove(existente);
+            _context.Locacoes.Remove(locacao);
             await _context.SaveChangesAsync();
             return true;
         }
